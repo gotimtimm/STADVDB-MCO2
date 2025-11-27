@@ -1,30 +1,30 @@
 const dbConfig = {
     node1: {
-        host: '10.2.14.138',
-        user: 'root',
-        password: 'PASSWORD', // Update this later
+        host: 'ccscloud.dlsu.edu.ph',
+        user: 'student',
+        password: 'password',
         database: 'source_db',
         waitForConnections: true,
         connectionLimit: 10,
-        port: 3306 
+        port: 60838 
     },
     node2: { 
-        host: '10.2.14.139',
-        user: 'root',
-        password: 'PASSWORD',
+        host: 'ccscloud.dlsu.edu.ph',
+        user: 'student',
+        password: 'password',
         database: 'source_db',
         waitForConnections: true,
         connectionLimit: 10,
-        port: 3306
+        port: 60839
     },
     node3: {
-        host: '10.2.14.140',
-        user: 'root',
-        password: 'PASSWORD',
+        host: 'ccscloud.dlsu.edu.ph',
+        user: 'student',
+        password: 'password',
         database: 'source_db',
         waitForConnections: true,
         connectionLimit: 10,
-        port: 3306
+        port: 60840
     }
 };
 
