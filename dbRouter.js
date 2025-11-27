@@ -1,6 +1,6 @@
 const mysql = require('mysql2/promise');
 const config = require('./config');
-const recovery = require('./recovery');
+const recovery = require('./recoveryLog');
 
 // --- CONNECTION POOLS ---
 const poolMaster = mysql.createPool(config.node1);
