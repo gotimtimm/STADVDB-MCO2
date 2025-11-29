@@ -27,7 +27,7 @@ const Simulation = {
                 await conn.beginTransaction();
                 
                 log(`${user}: Transaction Started. Reading ID ${id}...`);
-                const [rows] = await conn.query('SELECT * FROM Users WHERE id = ?', [id]);
+                const [rows] = await conn.query('SELECT * FROM user_profiles WHERE id = ?', [id]);
                 
                 log(`${user}: Read Data -> ${JSON.stringify(rows[0] || 'Not Found')}`);
                 await sleep(2000); // Simulate reading time
@@ -67,7 +67,7 @@ const Simulation = {
                 await conn.beginTransaction();
                 
                 log(`WRITER: Updating ID ${targetId} (setting country = 'LOCKED')...`);
-                await conn.query('UPDATE Users SET country = ? WHERE id = ?', ['LOCKED', targetId]);
+                await conn.query('UPDATE user_profiles SET country = ? WHERE id = ?', ['LOCKED', targetId]);
                 
                 log(`WRITER: Update sent. Sleeping 5 seconds to hold lock...`);
                 await sleep(5000); 
@@ -89,7 +89,7 @@ const Simulation = {
                 await conn.beginTransaction();
                 
                 log(`READER: Trying to read ID ${targetId}...`);
-                const [rows] = await conn.query('SELECT * FROM Users WHERE id = ?', [targetId]);
+                const [rows] = await conn.query('SELECT * FROM user_profiles WHERE id = ?', [targetId]);
                 
                 log(`READER: Success! Saw Data: ${rows[0]?.country}`);
                 await conn.commit();
@@ -120,7 +120,7 @@ const Simulation = {
                 await conn.beginTransaction();
                 
                 log(`${user}: Attempting Update on ID ${targetId}...`);
-                await conn.query('UPDATE Users SET username = ? WHERE id = ?', [`User_${user}`, targetId]);
+                await conn.query('UPDATE user_profiles SET username = ? WHERE id = ?', [`User_${user}`, targetId]);
                 
                 log(`${user}: Update success! Holding lock for 3s...`);
                 await sleep(3000);
