@@ -68,7 +68,8 @@
     </div>
 
     <div class="card">
-        <h3>1. Read User (ID: 1)</h3>
+        <h3>1. Read User</h3>
+        <input type="number" id="readId" placeholder="ID" value="1">
         <button onclick="readUser()">Read Data</button>
     </div>
 
@@ -81,7 +82,8 @@
     </div>
 
     <div class="card">
-        <h3>3. Update Country (ID: 1)</h3>
+        <h3>3. Update Country</h3>
+        <input type="number" id="updateId" placeholder="ID" value="1">
         <input type="text" id="updateCountry" placeholder="New Country" value="Philippines">
         <button onclick="updateUser()">Update</button>
     </div>
@@ -99,14 +101,16 @@
         const logBox = document.getElementById('log');
         const log = (msg) => logBox.textContent = JSON.stringify(msg, null, 2);
         
-        // Helper to get safely encoded isolation level
         const getIso = () => encodeURIComponent(document.getElementById('iso').value);
 
         async function readUser() {
+            const id = document.getElementById('readId').value;
+            if(!id) return log("Error: Please enter a User ID to read.");
+
             const iso = getIso();
-            logBox.textContent = "Reading from database...";
+            logBox.textContent = `Reading User ${id} from database...`;
             try {
-                const res = await fetch('/api/users/1?iso=' + iso);
+                const res = await fetch(`/api/users/${id}?iso=${iso}`);
                 const data = await res.json();
                 log(data);
             } catch(e) { log("Error: " + e.message); }
@@ -118,7 +122,9 @@
             const country = document.getElementById('createCountry').value;
             const iso = getIso();
             
-            logBox.textContent = "Committing transaction...";
+            if(!id || !username || !country) return log("Error: Please fill all fields.");
+
+            logBox.textContent = `Creating User ${id}...`;
             try {
                 const res = await fetch('/api/users?iso=' + iso, {
                     method: 'POST',
@@ -131,12 +137,15 @@
         }
 
         async function updateUser() {
+            const id = document.getElementById('updateId').value;
             const country = document.getElementById('updateCountry').value;
             const iso = getIso();
+
+            if(!id || !country) return log("Error: Please enter ID and new Country.");
             
-            logBox.textContent = "Updating distributed nodes...";
+            logBox.textContent = `Updating User ${id}...`;
             try {
-                const res = await fetch('/api/users/1?iso=' + iso, {
+                const res = await fetch(`/api/users/${id}?iso=${iso}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ country })
@@ -150,9 +159,11 @@
             const id = document.getElementById('deleteId').value;
             const iso = getIso();
             
-            logBox.textContent = "Deleting from all nodes...";
+            if(!id) return log("Error: Please enter a User ID to delete.");
+
+            logBox.textContent = `Deleting User ${id}...`;
             try {
-                const res = await fetch('/api/users/' + id + '?iso=' + iso, {
+                const res = await fetch(`/api/users/${id}?iso=${iso}`, {
                     method: 'DELETE'
                 });
                 const data = await res.json();
