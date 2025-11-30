@@ -4,10 +4,8 @@ const app = express();
 
 app.use(express.json());
 
-// Middleware to extract isolation level
 const getIsoLevel = (req) => req.query.iso || 'READ UNCOMMITTED';
 
-// web interface
 app.get('/', (req, res) => {
     res.send(`
         <html>
@@ -24,7 +22,6 @@ app.get('/', (req, res) => {
         </head>
         <body>
             <h1>Distributed Database Manager</h1>
-            <p>Select an Isolation Level and perform a distributed transaction across Master and Slaves.</p>
             
             <div class="card">
                 <label><b>Isolation Level:</b></label>
@@ -66,7 +63,7 @@ app.get('/', (req, res) => {
 
             <script>
                 const log = (msg) => document.getElementById('log').textContent = JSON.stringify(msg, null, 2);
-                const getIso = () => document.getElementById('iso').value;
+                const getIso = () => encodeURIComponent(document.getElementById('iso').value); // FIXED: Encodes spaces
 
                 async function readUser() {
                     const iso = getIso();
@@ -75,7 +72,7 @@ app.get('/', (req, res) => {
                         const res = await fetch('/api/users/1?iso=' + iso);
                         const data = await res.json();
                         log(data);
-                    } catch(e) { log(e.message); }
+                    } catch(e) { log("Error: " + e.message); }
                 }
 
                 async function createUser() {
@@ -92,7 +89,7 @@ app.get('/', (req, res) => {
                         });
                         const data = await res.json();
                         log(data);
-                    } catch(e) { log(e.message); }
+                    } catch(e) { log("Error: " + e.message); }
                 }
 
                 async function updateUser() {
@@ -107,7 +104,7 @@ app.get('/', (req, res) => {
                         });
                         const data = await res.json();
                         log(data);
-                    } catch(e) { log(e.message); }
+                    } catch(e) { log("Error: " + e.message); }
                 }
 
                 async function deleteUser() {
@@ -120,7 +117,7 @@ app.get('/', (req, res) => {
                         });
                         const data = await res.json();
                         log(data);
-                    } catch(e) { log(e.message); }
+                    } catch(e) { log("Error: " + e.message); }
                 }
             </script>
         </body>
@@ -128,8 +125,8 @@ app.get('/', (req, res) => {
     `);
 });
 
-// GET (Read)
 app.get('/api/users/:id', async (req, res) => {
+    console.log(`[GET] Request for ID: ${req.params.id}`);
     try {
         const user = await userService.getUser(req.params.id, getIsoLevel(req));
         if (!user) return res.status(404).json({ error: 'User not found in Slave Node' });
@@ -139,12 +136,13 @@ app.get('/api/users/:id', async (req, res) => {
             data: user 
         });
     } catch (err) {
+        console.error("[GET] Error:", err.message);
         res.status(500).json({ error: err.message });
     }
 });
 
-// POST (Create)
 app.post('/api/users', async (req, res) => {
+    console.log(`[POST] Creating User: ${req.body.id}`);
     try {
         const { id, username, country } = req.body;
         if(!id || !username || !country) return res.status(400).json({error: "Missing fields"});
@@ -156,12 +154,13 @@ app.post('/api/users', async (req, res) => {
             result: result
         });
     } catch (err) {
+        console.error("[POST] Error:", err.message);
         res.status(500).json({ error: err.message });
     }
 });
 
-// PUT (Update)
 app.put('/api/users/:id', async (req, res) => {
+    console.log(`[PUT] Updating ID: ${req.params.id}`);
     try {
         const { country } = req.body;
         const result = await userService.updateUser(req.params.id, country, getIsoLevel(req));
@@ -171,12 +170,13 @@ app.put('/api/users/:id', async (req, res) => {
             result: result
         });
     } catch (err) {
+        console.error("[PUT] Error:", err.message);
         res.status(500).json({ error: err.message });
     }
 });
 
-// DELETE (Delete)
 app.delete('/api/users/:id', async (req, res) => {
+    console.log(`[DELETE] ID: ${req.params.id}`);
     try {
         const result = await userService.deleteUser(req.params.id, getIsoLevel(req));
         res.json({
@@ -185,6 +185,7 @@ app.delete('/api/users/:id', async (req, res) => {
             result: result
         });
     } catch (err) {
+        console.error("[DELETE] Error:", err.message);
         res.status(500).json({ error: err.message });
     }
 });
@@ -192,5 +193,4 @@ app.delete('/api/users/:id', async (req, res) => {
 const PORT = 3000;
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
-    console.log(`Modes: READ UNCOMMITTED (default), READ COMMITTED, REPEATABLE READ, SERIALIZABLE`);
 });
