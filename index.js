@@ -1,75 +1,80 @@
 const express = require('express');
-const dbRouter = require('./dbRouter');
-const simulation = require('./simulationController');
+const path = require('path');
+const userService = require('./userService'); 
 
 const app = express();
+
 app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
 
-// 1. Route to Read Data 
-app.get('/user/:id', async (req, res) => {
-    try {
-        const user = await dbRouter.getUser(req.params.id);
-        res.json(user);
-    } catch (err) {
-        res.status(404).json({ error: err.message });
-    }
-});
+const getIsoLevel = (req) => req.query.iso || 'READ UNCOMMITTED';
 
-// 2. Route to Write Data
-app.post('/add-user', async (req, res) => {
+// --- API ENDPOINTS ---
+app.get('/api/users/:id', async (req, res) => {
+    console.log(`[GET] Request for ID: ${req.params.id} | Level: ${getIsoLevel(req)}`);
     try {
-        const result = await dbRouter.insertUser(req.body);
-        res.json({ success: true, status: result });
+        const user = await userService.getUser(req.params.id, getIsoLevel(req));
+        if (!user) return res.status(404).json({ error: 'User not found in Slave Node' });
+        res.json({ 
+            status: 'Success', 
+            isolation_used: getIsoLevel(req),
+            data: user 
+        });
     } catch (err) {
+        console.error("[GET] Error:", err.message);
         res.status(500).json({ error: err.message });
     }
 });
 
-// Helper to run simulation and display logs neatly
-const runSim = async (res, caseFn, isoLevel) => {
+app.post('/api/users', async (req, res) => {
+    console.log(`[POST] Creating User: ${req.body.id} | Level: ${getIsoLevel(req)}`);
     try {
-        const logs = await caseFn(isoLevel);
-        res.send(`
-            <h2>Simulation Results</h2>
-            <p><b>Case:</b> ${caseFn.name} | <b>Isolation:</b> ${isoLevel}</p>
-            <pre style="background: #f4f4f4; padding: 10px; border: 1px solid #ddd;">${logs.join('\n')}</pre>
-            <br><a href="/">Back</a>
-        `);
+        const { id, username, country } = req.body;
+        if(!id || !username || !country) return res.status(400).json({error: "Missing fields"});
+        
+        const result = await userService.createUser(id, username, country, getIsoLevel(req));
+        res.status(201).json({
+            status: 'Committed to Master & Slave',
+            isolation_used: getIsoLevel(req),
+            result: result
+        });
     } catch (err) {
-        res.status(500).send(err.message);
+        console.error("[POST] Error:", err.message);
+        res.status(500).json({ error: err.message });
     }
-};
-
-// Routes for the Simulations
-app.get('/simulate/case1', (req, res) => runSim(res, simulation.case1, req.query.iso || 'READ UNCOMMITTED'));
-app.get('/simulate/case2', (req, res) => runSim(res, simulation.case2, req.query.iso || 'READ UNCOMMITTED'));
-app.get('/simulate/case3', (req, res) => runSim(res, simulation.case3, req.query.iso || 'READ UNCOMMITTED'));
-
-app.get('/', (req, res) => {
-    res.send(`
-        <h1>Distributed DB Simulation</h1>
-        <h3>Select Isolation Level:</h3>
-        <select id="iso">
-            <option value="READ UNCOMMITTED">READ UNCOMMITTED</option>
-            <option value="READ COMMITTED">READ COMMITTED</option>
-            <option value="REPEATABLE READ">REPEATABLE READ</option>
-            <option value="SERIALIZABLE">SERIALIZABLE</option>
-        </select>
-        <hr>
-        <button onclick="run('case1')">Run Case 1 (Read-Read)</button>
-        <button onclick="run('case2')">Run Case 2 (Write-Read)</button>
-        <button onclick="run('case3')">Run Case 3 (Write-Write)</button>
-
-        <script>
-            function run(caseName) {
-                const iso = document.getElementById('iso').value;
-                window.location.href = '/simulate/' + caseName + '?iso=' + iso;
-            }
-        </script>
-    `);
 });
 
-// Start the Server
+app.put('/api/users/:id', async (req, res) => {
+    console.log(`[PUT] Updating ID: ${req.params.id} | Level: ${getIsoLevel(req)}`);
+    try {
+        const { country } = req.body;
+        const result = await userService.updateUser(req.params.id, country, getIsoLevel(req));
+        res.json({
+            status: 'Updated Master & Slave',
+            isolation_used: getIsoLevel(req),
+            result: result
+        });
+    } catch (err) {
+        console.error("[PUT] Error:", err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.delete('/api/users/:id', async (req, res) => {
+    console.log(`[DELETE] ID: ${req.params.id} | Level: ${getIsoLevel(req)}`);
+    try {
+        const result = await userService.deleteUser(req.params.id, getIsoLevel(req));
+        res.json({
+            status: 'Deleted from Master & Slave',
+            isolation_used: getIsoLevel(req),
+            result: result
+        });
+    } catch (err) {
+        console.error("[DELETE] Error:", err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 const PORT = 3000;
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);

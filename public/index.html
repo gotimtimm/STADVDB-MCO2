@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Distributed Transaction Manager</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; background-color: #f4f4f9; }
+        h1 { color: #333; text-align: center; }
+        p { text-align: center; color: #666; }
+        .card { 
+            border: 1px solid #ddd; 
+            padding: 20px; 
+            margin-bottom: 20px; 
+            border-radius: 8px; 
+            background: #fff; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .card h3 { margin-top: 0; color: #444; }
+        button { 
+            cursor: pointer; 
+            padding: 10px 15px; 
+            background: #007bff; 
+            color: white; 
+            border: none; 
+            border-radius: 4px; 
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        button:hover { background: #0056b3; }
+        button.delete { background: #dc3545; }
+        button.delete:hover { background: #c82333; }
+        
+        input, select { 
+            padding: 10px; 
+            margin-right: 10px; 
+            border: 1px solid #ccc; 
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        input[type="number"] { width: 80px; }
+        
+        pre { 
+            background: #2d2d2d; 
+            color: #f8f8f2; 
+            padding: 15px; 
+            border-radius: 5px; 
+            overflow-x: auto; 
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+        }
+        .status-box { margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Distributed Database Manager</h1>
+    <p>Perform atomic CRUD operations across Master and Slave nodes.</p>
+    
+    <div class="card status-box">
+        <label><b>Global Isolation Level:</b></label>
+        <select id="iso">
+            <option value="READ UNCOMMITTED">READ UNCOMMITTED</option>
+            <option value="READ COMMITTED">READ COMMITTED</option>
+            <option value="REPEATABLE READ">REPEATABLE READ</option>
+            <option value="SERIALIZABLE">SERIALIZABLE</option>
+        </select>
+        <small style="color: #666; display: block; margin-top: 5px;">Applies to all transactions below.</small>
+    </div>
+
+    <div class="card">
+        <h3>1. Read User (ID: 1)</h3>
+        <button onclick="readUser()">Read Data</button>
+    </div>
+
+    <div class="card">
+        <h3>2. Create User</h3>
+        <input type="number" id="createId" placeholder="ID (e.g. 101)">
+        <input type="text" id="createName" placeholder="Name">
+        <input type="text" id="createCountry" placeholder="Country">
+        <button onclick="createUser()">Create</button>
+    </div>
+
+    <div class="card">
+        <h3>3. Update Country (ID: 1)</h3>
+        <input type="text" id="updateCountry" placeholder="New Country" value="Philippines">
+        <button onclick="updateUser()">Update</button>
+    </div>
+
+    <div class="card">
+        <h3>4. Delete User</h3>
+        <input type="number" id="deleteId" placeholder="ID to Delete">
+        <button class="delete" onclick="deleteUser()">Delete</button>
+    </div>
+
+    <h3>Transaction Log:</h3>
+    <pre id="log">Waiting for action...</pre>
+
+    <script>
+        const logBox = document.getElementById('log');
+        const log = (msg) => logBox.textContent = JSON.stringify(msg, null, 2);
+        
+        // Helper to get safely encoded isolation level
+        const getIso = () => encodeURIComponent(document.getElementById('iso').value);
+
+        async function readUser() {
+            const iso = getIso();
+            logBox.textContent = "Reading from database...";
+            try {
+                const res = await fetch('/api/users/1?iso=' + iso);
+                const data = await res.json();
+                log(data);
+            } catch(e) { log("Error: " + e.message); }
+        }
+
+        async function createUser() {
+            const id = document.getElementById('createId').value;
+            const username = document.getElementById('createName').value;
+            const country = document.getElementById('createCountry').value;
+            const iso = getIso();
+            
+            logBox.textContent = "Committing transaction...";
+            try {
+                const res = await fetch('/api/users?iso=' + iso, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id, username, country })
+                });
+                const data = await res.json();
+                log(data);
+            } catch(e) { log("Error: " + e.message); }
+        }
+
+        async function updateUser() {
+            const country = document.getElementById('updateCountry').value;
+            const iso = getIso();
+            
+            logBox.textContent = "Updating distributed nodes...";
+            try {
+                const res = await fetch('/api/users/1?iso=' + iso, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ country })
+                });
+                const data = await res.json();
+                log(data);
+            } catch(e) { log("Error: " + e.message); }
+        }
+
+        async function deleteUser() {
+            const id = document.getElementById('deleteId').value;
+            const iso = getIso();
+            
+            logBox.textContent = "Deleting from all nodes...";
+            try {
+                const res = await fetch('/api/users/' + id + '?iso=' + iso, {
+                    method: 'DELETE'
+                });
+                const data = await res.json();
+                log(data);
+            } catch(e) { log("Error: " + e.message); }
+        }
+    </script>
+</body>
+</html>
