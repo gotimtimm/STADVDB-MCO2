@@ -9,7 +9,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const getIsoLevel = (req) => req.query.iso || 'READ UNCOMMITTED';
 
-// --- API ENDPOINTS ---
 app.get('/api/users/:id', async (req, res) => {
     console.log(`[GET] Request for ID: ${req.params.id} | Level: ${getIsoLevel(req)}`);
     try {
