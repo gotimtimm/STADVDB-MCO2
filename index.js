@@ -74,7 +74,25 @@ app.delete('/api/users/:id', async (req, res) => {
     }
 });
 
+
+app.post('/api/recovery', async (req, res) => {
+    console.log(`[RECOVERY] Request received for: ${req.body.node}`);
+    try {
+        const { node } = req.body;
+        // Call the new function we just added to userService
+        const result = await userService.recoverNode(node);
+        res.json({ 
+            status: 'Recovery Complete', 
+            details: result 
+        });
+    } catch (err) {
+        console.error("[RECOVERY] Error:", err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 const PORT = 3000;
+
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
 });
