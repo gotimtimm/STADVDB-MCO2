@@ -1,19 +1,31 @@
+import java.io.FileWriter;
+import java.io.PrintWriter;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.concurrent.CountDownLatch;
 
 public class TestScript {
     // Configuration
     private static final String BASE_URL = "http://localhost:3000/api/users";
-    private static final int TARGET_ID = 1; // Ensure this user exists in your DB first!
+    private static final int TARGET_ID = 1; 
+    private static final String LOG_FILE = "results.txt"; // Output file
+    
+    // Global Writer
+    private static PrintWriter fileWriter;
 
     public static void main(String[] args) {
         try {
-            // We test 4 isolation levels
+            fileWriter = new PrintWriter(new FileWriter(LOG_FILE, true));
+            log("\n==================================================");
+            log("NEW TEST RUN: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            log("==================================================");
+
             String[] isolationLevels = {
                 "READ UNCOMMITTED",
                 "READ COMMITTED",
@@ -21,35 +33,45 @@ public class TestScript {
                 "SERIALIZABLE"
             };
 
-            System.out.println("=== STARTING CONCURRENCY TESTS ===\n");
-
             for (String level : isolationLevels){
-                System.out.println("--------------------------------------------------");
-                System.out.println("TESTING ISOLATION LEVEL: " + level);
-                System.out.println("--------------------------------------------------");
+                log("\n--------------------------------------------------");
+                log("TESTING ISOLATION LEVEL: " + level);
+                log("--------------------------------------------------");
 
-                // Case 1: Concurrent Reads (Shared Locks)
+                // Case 1: Concurrent Reads
                 concurrentReadTest(level);
-                Thread.sleep(2000); // Cool down
+                Thread.sleep(2000); 
 
-                // Case 2: Read vs Write (Dirty Read Check)
+                // Case 2: Read vs Write
                 readWriteTest(level);
                 Thread.sleep(2000);
 
-                // Case 3: Write vs Write (Exclusive Lock Check)
+                // Case 3: Concurrent Writes
                 concurrentWriteTest(level);
-                Thread.sleep(3000); // Allow DB to settle
+                Thread.sleep(3000); 
             }
 
         } catch (Exception e) {
             e.printStackTrace();
+        } finally {
+            if (fileWriter != null) fileWriter.close();
         }
     }
 
-    // --- CASE 1: CONCURRENT READS ---
-    // Both users should be able to read simultaneously without blocking (unless Serializable).
+    // --- LOGGING FUNCTION ---
+    // Writes to System.out and the Text File
+    private static synchronized void log(String msg) {
+        System.out.println(msg);
+        if (fileWriter != null) {
+            fileWriter.println(msg);
+            fileWriter.flush();
+        }
+    }
+
+    // --- TEST CASES ---
+
     private static void concurrentReadTest(String isolationLevel) throws InterruptedException {
-        System.out.println("\n[Case #1] Concurrent Reads (User A & User B)");
+        log("\n[Case #1] Concurrent Reads (User A & User B)");
         CountDownLatch latch = new CountDownLatch(1);
 
         Thread userA = new Thread(new RequestTask("User A", "GET", isolationLevel, latch));
@@ -58,42 +80,29 @@ public class TestScript {
         userA.start();
         userB.start();
 
-        latch.countDown(); // FIRE!
-        
+        latch.countDown(); 
         userA.join();
         userB.join();
     }   
 
-    // --- CASE 2: WRITE vs READ ---
-    // User A updates data. User B tries to read.
-    // READ UNCOMMITTED: User B sees the new value immediately (Dirty Read).
-    // READ COMMITTED: User B sees the OLD value or waits.
     private static void readWriteTest(String isolationLevel) throws InterruptedException {
-        System.out.println("\n[Case #2] Write (User A) vs Read (User B)");
+        log("\n[Case #2] Write (User A) vs Read (User B)");
         CountDownLatch latch = new CountDownLatch(1);
 
-        // User A updates Country to "Locked"
         Thread userA = new Thread(new RequestTask("User A [WRITE]", "PUT", "Locked_Region", isolationLevel, latch));
-        
-        // User B tries to read it
         Thread userB = new Thread(new RequestTask("User B [READ]", "GET", isolationLevel, latch));
 
         userA.start();
         userB.start();
 
         latch.countDown(); 
-
         userA.join();
         userB.join();
-        
-        // Reset data for next test
         resetData();
     }
 
-    // --- CASE 3: CONCURRENT WRITES ---
-    // Both users try to update the same row. One MUST wait (Locking).
     private static void concurrentWriteTest(String isolationLevel) throws InterruptedException {
-        System.out.println("\n[Case #3] Concurrent Writes (Race Condition)");
+        log("\n[Case #3] Concurrent Writes (Race Condition)");
         CountDownLatch latch = new CountDownLatch(1);
 
         Thread userA = new Thread(new RequestTask("User A", "PUT", "Country_A", isolationLevel, latch)); 
@@ -103,15 +112,11 @@ public class TestScript {
         userB.start();
         
         latch.countDown(); 
-
         userA.join();
         userB.join();
 
-        // Check who won
         printFinalState();
     }
-
-    // --- HELPERS ---
 
     private static void resetData() {
         try {
@@ -121,24 +126,18 @@ public class TestScript {
 
     private static void printFinalState() {
         try {
-            System.out.println("   -> Final DB Value: " + performRequest("Check", "GET", null, "READ COMMITTED"));
+            log("   -> Final DB Value: " + performRequest("Check", "GET", null, "READ COMMITTED"));
         } catch (Exception e) {}
     }
 
-    // Generic Request Task
     static class RequestTask implements Runnable {
-        String user;
-        String method; // GET or PUT
-        String data;   // Only for PUT
-        String isolation;
+        String user, method, data, isolation;
         CountDownLatch latch;
 
-        // Constructor for READ
         public RequestTask(String user, String method, String isolation, CountDownLatch latch) {
             this(user, method, null, isolation, latch);
         }
 
-        // Constructor for WRITE
         public RequestTask(String user, String method, String data, String isolation, CountDownLatch latch) {
             this.user = user;
             this.method = method;
@@ -150,11 +149,11 @@ public class TestScript {
         @Override
         public void run() {
             try {
-                latch.await(); // Wait for the "GO" signal
+                latch.await(); 
                 String response = performRequest(user, method, data, isolation);
-                System.out.println("   " + user + " Finished: " + response);
+                log("   " + user + " Finished: " + response);
             } catch (Exception e) {
-                System.out.println("   " + user + " Failed: " + e.getMessage());
+                log("   " + user + " Failed: " + e.getMessage());
             }
         }
     }
@@ -166,7 +165,7 @@ public class TestScript {
         HttpClient client = HttpClient.newHttpClient();
         HttpRequest.Builder builder = HttpRequest.newBuilder()
                 .uri(URI.create(url))
-                .timeout(Duration.ofSeconds(10)); // Fail if locked too long
+                .timeout(Duration.ofSeconds(10));
 
         if (method.equals("PUT")) {
             String json = String.format("{\"country\":\"%s\"}", data);
@@ -181,8 +180,8 @@ public class TestScript {
         long end = System.currentTimeMillis();
         long duration = end - start;
 
-        // Extract relevant part of response for cleaner logs
         String body = response.body().length() > 50 ? response.body().substring(0, 50) + "..." : response.body();
+        // Return strictly formatted string for log
         return String.format("[%d ms] Status %d | %s", duration, response.statusCode(), body);
     }
 }
