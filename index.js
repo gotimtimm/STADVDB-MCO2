@@ -72,7 +72,7 @@ app.delete('/api/users/:id', async (req, res) => {
         console.error("[DELETE] Error:", err.message);
         res.status(500).json({ error: err.message });
     }
-});
+});``
 
 
 app.post('/api/recovery', async (req, res) => {

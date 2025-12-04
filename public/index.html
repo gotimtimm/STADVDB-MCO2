@@ -1,61 +1,99 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Distributed Transaction Manager</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; background-color: #f4f4f9; }
-        h1 { color: #333; text-align: center; }
-        p { text-align: center; color: #666; }
-        .card { 
-            border: 1px solid #ddd; 
-            padding: 20px; 
-            margin-bottom: 20px; 
-            border-radius: 8px; 
-            background: #fff; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #f4f4f9;
         }
-        .card h3 { margin-top: 0; color: #444; }
-        button { 
-            cursor: pointer; 
-            padding: 10px 15px; 
-            background: #007bff; 
-            color: white; 
-            border: none; 
-            border-radius: 4px; 
+
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+
+        p {
+            text-align: center;
+            color: #666;
+        }
+
+        .card {
+            border: 1px solid #ddd;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            background: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .card h3 {
+            margin-top: 0;
+            color: #444;
+        }
+
+        button {
+            cursor: pointer;
+            padding: 10px 15px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
             font-size: 14px;
             transition: background 0.2s;
         }
-        button:hover { background: #0056b3; }
-        button.delete { background: #dc3545; }
-        button.delete:hover { background: #c82333; }
-        
-        input, select { 
-            padding: 10px; 
-            margin-right: 10px; 
-            border: 1px solid #ccc; 
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        button.delete {
+            background: #dc3545;
+        }
+
+        button.delete:hover {
+            background: #c82333;
+        }
+
+        input,
+        select {
+            padding: 10px;
+            margin-right: 10px;
+            border: 1px solid #ccc;
             border-radius: 4px;
             font-size: 14px;
         }
-        input[type="number"] { width: 80px; }
-        
-        pre { 
-            background: #2d2d2d; 
-            color: #f8f8f2; 
-            padding: 15px; 
-            border-radius: 5px; 
-            overflow-x: auto; 
+
+        input[type="number"] {
+            width: 80px;
+        }
+
+        pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
             font-family: 'Consolas', 'Monaco', monospace;
             font-size: 13px;
         }
-        .status-box { margin-bottom: 20px; }
+
+        .status-box {
+            margin-bottom: 20px;
+        }
     </style>
 </head>
+
 <body>
     <h1>Distributed Database Manager</h1>
     <p>Perform atomic CRUD operations across Master and Slave nodes.</p>
-    
+
     <div class="card status-box">
         <label><b>Global Isolation Level:</b></label>
         <select id="iso">
@@ -94,18 +132,26 @@
         <button class="delete" onclick="deleteUser()">Delete</button>
     </div>
 
+    <div class="card">
+        <h3>5. Recovery: Replay Failed Transactions</h3>
+        <p>Select a node to recover:</p>
+        <button onclick="recover('node1')">Recover Node 1 (Master)</button>
+        <button onclick="recover('node2')">Recover Node 2 (Odd IDs)</button>
+        <button onclick="recover('node3')">Recover Node 3 (Even IDs)</button>
+    </div>
+
     <h3>Transaction Log:</h3>
     <pre id="log">Waiting for action...</pre>
 
     <script>
         const logBox = document.getElementById('log');
         const log = (msg) => logBox.textContent = JSON.stringify(msg, null, 2);
-        
+
         const getIso = () => encodeURIComponent(document.getElementById('iso').value);
 
         async function readUser() {
             const id = document.getElementById('readId').value;
-            if(!id) return log("Error: Please enter a User ID to read.");
+            if (!id) return log("Error: Please enter a User ID to read.");
 
             const iso = getIso();
             logBox.textContent = `Reading User ${id} from database...`;
@@ -113,7 +159,7 @@
                 const res = await fetch(`/api/users/${id}?iso=${iso}`);
                 const data = await res.json();
                 log(data);
-            } catch(e) { log("Error: " + e.message); }
+            } catch (e) { log("Error: " + e.message); }
         }
 
         async function createUser() {
@@ -121,8 +167,8 @@
             const username = document.getElementById('createName').value;
             const country = document.getElementById('createCountry').value;
             const iso = getIso();
-            
-            if(!id || !username || !country) return log("Error: Please fill all fields.");
+
+            if (!id || !username || !country) return log("Error: Please fill all fields.");
 
             logBox.textContent = `Creating User ${id}...`;
             try {
@@ -133,7 +179,7 @@
                 });
                 const data = await res.json();
                 log(data);
-            } catch(e) { log("Error: " + e.message); }
+            } catch (e) { log("Error: " + e.message); }
         }
 
         async function updateUser() {
@@ -141,8 +187,8 @@
             const country = document.getElementById('updateCountry').value;
             const iso = getIso();
 
-            if(!id || !country) return log("Error: Please enter ID and new Country.");
-            
+            if (!id || !country) return log("Error: Please enter ID and new Country.");
+
             logBox.textContent = `Updating User ${id}...`;
             try {
                 const res = await fetch(`/api/users/${id}?iso=${iso}`, {
@@ -152,14 +198,14 @@
                 });
                 const data = await res.json();
                 log(data);
-            } catch(e) { log("Error: " + e.message); }
+            } catch (e) { log("Error: " + e.message); }
         }
 
         async function deleteUser() {
             const id = document.getElementById('deleteId').value;
             const iso = getIso();
-            
-            if(!id) return log("Error: Please enter a User ID to delete.");
+
+            if (!id) return log("Error: Please enter a User ID to delete.");
 
             logBox.textContent = `Deleting User ${id}...`;
             try {
@@ -168,8 +214,22 @@
                 });
                 const data = await res.json();
                 log(data);
-            } catch(e) { log("Error: " + e.message); }
+            } catch (e) { log("Error: " + e.message); }
+        }
+
+        async function recover(node) {
+            logBox.textContent = `Triggering recovery for ${node}...`;
+            try {
+                const res = await fetch('/api/recovery', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ node })
+                });
+                const data = await res.json();
+                log(data);
+            } catch (e) { log("Error: " + e.message); }
         }
     </script>
 </body>
+
 </html>

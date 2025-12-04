@@ -125,7 +125,6 @@ module.exports = {
     },
     getUser: executeRead,
 
-    // New Recovery Function used by the API
     recoverNode: async (nodeName) => {
         let pool;
         if (nodeName === 'node1') pool = poolMaster;

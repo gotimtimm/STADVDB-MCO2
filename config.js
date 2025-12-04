@@ -6,7 +6,7 @@ const dbConfig = {
         database: 'users_db',
         waitForConnections: true,
         connectionLimit: 10,
-        port: 60838 
+        port: 60838  
     },
     node2: { 
         host: 'ccscloud.dlsu.edu.ph',
